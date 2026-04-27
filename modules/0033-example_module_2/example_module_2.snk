@@ -1,0 +1,115 @@
+#!/usr/bin/env snakemake
+
+"""
+Snakemake QTL pipeline
+----------------------
+Snakemake pipeline for molecular trait QTL mapping
+"""
+
+__version__ = '0.1.0'
+
+rule all:
+    input:
+        # QTLtools nominal associations
+        'qtltools_nominal.tsv.gz',
+
+        # QTLtools permutation associations
+        'qtltools_permute.tsv.gz',
+        'plots/qtltools_permute-check_beta_approx.png',
+
+        # QTLtools conditional associations
+        'qtltools_conditional.tsv.gz',
+
+        # veqtl-mapper variance qtls
+        'vqtlmapper_permute-top_qtl.tsv.gz'
+
+
+# QTLtools: file prep ##########################################################
+rule qtltools_prep__vcf:
+    """
+    QTLtools:   generate tabix index of vcf input files
+    """
+    input:
+        'data/genotypes.vcf.gz'
+    output:
+        'data/genotypes.vcf.gz.tbi'
+    singularity:
+        config['DOCKER']
+    shell:
+        'tabix {input}'
+
+
+rule qtltools_prep__bed:
+    """
+    QTLtools:   generate tabix index of bed input files
+    """
+    input:
+        'data/moltraits.bed.gz'
+    singularity:
+        config['DOCKER']
+    output:
+        'data/moltraits.bed.gz.tbi'
+    shell:
+        'tabix {input}'
+################################################################################
+
+
+# QTLtools: nominal pass #######################################################
+rule qtltools_proximal__nominal:
+    """
+    QTLtools:   nominal proximal mapping (association with all variants)
+    """
+    input:
+        geno='data/genotypes.vcf.gz',
+        geno_tbi='data/genotypes.vcf.gz.tbi',
+        pheno='data/moltraits.bed.gz',
+        pheno_tbi='data/moltraits.bed.gz.tbi'
+    output:
+        temp('swarm_qtltools_nominal/qtltools_nominal-{j_cur}_{j_total}.txt')
+    singularity:
+        config['DOCKER']
+    params:
+        other_param=config['PARAM_QTLTOOLS'],
+        nominal_cutoff=config['PARAM_QTLTOOLS_NOMINAL_CUTOFF']
+    shell:
+        'QTLtools cis --vcf {input.geno} --bed {input.pheno} '
+            '--nominal {params.nominal_cutoff} '
+            '--normal ' # force the input phenotype to N(0, 1)
+            '--seed 15112011 ' # seed for random number generator
+            '--window 1000000 ' # window size. default = 1Mb
+            '--chunk {wildcards.j_cur} {wildcards.j_total} ' # for swarming
+            '{params.other_param} ' # PARAM from config
+            '--out {output}'
+
+rule qtltools_proximal__nominal_concat:
+    """
+    QTLtools: swarm proximal mapping & combine the output
+
+    Notes:
+    - 1 based so first iteration is 1 not 0.
+    - removes the temp input data
+    """
+    input:
+        expand(
+            'swarm_qtltools_nominal/qtltools_nominal-{j_cur}_{j_total}.txt',
+            j_cur=range(1, config['NJOBS_NOMINAL']+1),
+            j_total=config['NJOBS_NOMINAL']
+        )
+    output:
+        'qtltools_nominal.tsv.gz'
+    shell:
+        # add the header to the output file
+        'echo "pheno_id '
+            'pheno_chr pheno_start pheno_end pheno_strand '
+            'n_proximal_var pheno_var_dist '
+            'var_id var_chr var_start var_end '
+            'p_nominal beta top_proximal_var" | '
+        'sed s/" "/"\t"/g | gzip -c > {output}; '
+
+        # cat swarm files to make the output file
+        'cat {input} | sed s/" "/"\t"/g | gzip -c >> {output}; '
+
+        # remove the temp files and swarm directory
+        #'rm {input}; ' # no need to by defining temp() in previous rule
+        'rm -r swarm_qtltools_nominal; '
+################################################################################

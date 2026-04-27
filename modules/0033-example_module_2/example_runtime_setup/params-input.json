@@ -1,0 +1,12 @@
+{
+    # Docker image - by default used by singularity (--use-singularity)
+    "DOCKER" : "docker://dockerhub_d/my_image",
+
+    # general settings
+    "NJOBS_forsomerule" : 10,
+    "NJOBS_foranotherrule" : 30,
+
+    # PROGRAM1 settings
+    "PARAM_PROGRAM1" : "--cov data/covariates.txt.gz",
+    "PARAM_PROGRAM1_NOMINAL_CUTOFF" : 1
+}
