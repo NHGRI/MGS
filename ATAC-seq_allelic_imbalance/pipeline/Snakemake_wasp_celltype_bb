@@ -23,22 +23,6 @@ SAMP_TO_MAP = read_samples()
 
 rule all:
     input:
-        #config['snph5'] + '/haplotypes.h5',
-        #expand(config['results']+'/clip/{sample}.keep.merge.rmdup.sort.bam',
-        #    sample=read_samples().keys()),
-        #expand(config['results']+'/as_counts/{sample}.as_counts.txt.gz',
-        #    sample=read_samples().keys()),
-        #expand(config['results']+'/heterozygotes/{sample}.hets',
-        #    sample=read_samples().keys()),
-        #expand(config['results']+'/allelic_imbalance/betabinomial_tests_{sample}.bed',
-        #    sample=read_samples().keys()),
-        #config['results']+'/combined_narrow_peaks/combined_narrow_peaks.bed',
-        #expand(config['results']+'/allelic_imbalance/betabinomial_tests_{sample}.bed',
-        #    sample=read_samples().keys()),
-        #expand(config['results']+'/ATAC_peak_SNPs_betabinomial/ATAC_peak_SNPs_{sample}.bed',
-        #       sample=read_samples().keys()),
-        # Beta binomial test of all SNPs in ATAC-seq peaks
-        config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom.txt',
         # T2D and related traits summary
         config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_T2D.txt',
         config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_glucose.txt',
