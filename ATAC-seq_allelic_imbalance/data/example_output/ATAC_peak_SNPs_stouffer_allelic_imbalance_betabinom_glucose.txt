@@ -1,0 +1,1 @@
+#chr	start	stop	var_id	ref_base	alt_base	meta_betabinomial_p	meta_betabinomial_q	pseudo.ref.count	pseudo.total.count	pseudo_betabinomial_p	pseudo_betabinomial_q	pseudo_betabinomial_p_flag	ref.effect	variantInf

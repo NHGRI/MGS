@@ -1,0 +1,73 @@
+{
+    "__default__" :
+    {
+        "group"     : "/narisu/fusion/seurat",
+        "memory"    : 16, # in Gb
+        "name"      : "sm.{rule}.{wildcards}",
+        "output"    : "logs/cluster/{rule}/snkmk.{wildcards}.o",
+        "error"     : "logs/cluster/{rule}/snkmk.{wildcards}.e"
+    },
+   "enrichment_of_imbalanced_SNPs_in_TF":
+    {
+        "memory"    : 80 # in Gb
+    },
+   "T2D_imbalanced_snp_tf":
+    {
+        "memory"    : 80 # in Gb
+    },
+   "add_association_tf_target_eqtl_asi_in_tfs":
+    {
+        "memory"    : 80 # in Gb
+    },
+   "finemap_all_SNPs_TF":
+    {
+        "memory"    : 80 # in Gb
+    },
+   "run_centipede_cis_bp":
+    {
+        "memory"    : 64, # in Gb
+        "name"      : "sm.{rule}.{wildcards.sample}.{wildcards.motif2scan}",
+        "output"    : "logs/cluster/{rule}/snkmk.{wildcards.sample}.{wildcards.motif2scan}.o",
+        "error"     : "logs/cluster/{rule}/snkmk.{wildcards.sample}.{wildcards.motif2scan}.e"
+    },
+   "SNPs_in_ATAC_peaks_prepare_stouffer":
+    {
+        "memory"    : 200 # in Gb
+    },
+   "vcf2h5":
+    {
+        "memory"    : 40 # in Gb
+    },
+   "map_bwa_paired_end2":
+    {
+        "memory"    : 20 # in Gb
+    },
+   "map_bwa_paired_end2":
+    {
+        "memory"    : 40 # in Gb
+    },
+    "perform_binom_and_beta_binomial" :
+    {
+        "memory"    : 80  # in Gb
+    },
+    "count_incremental_signals_with_full_hets" :
+    {
+        "memory"    : 80  # in Gb
+    },
+   "FG_get_genotypes_of_T2D":
+    {
+        "memory"    : 80 # in Gb
+    },
+   "HbA1C_get_genotypes_of_T2D":
+    {
+        "memory"    : 80 # in Gb
+    },
+   "glucose_get_genotypes_of_T2D":
+    {
+        "memory"    : 80 # in Gb
+    },
+   "get_genotypes_of_T2D":
+    {
+        "memory"    : 80 # in Gb
+    }
+}

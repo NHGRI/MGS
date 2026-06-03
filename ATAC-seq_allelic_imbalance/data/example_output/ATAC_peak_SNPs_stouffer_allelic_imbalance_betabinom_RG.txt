@@ -1,0 +1,2 @@
+#chr	start	stop	var_id	ref_base	alt_base	meta_betabinomial_p	meta_betabinomial_q	pseudo.ref.count	pseudo.total.count	pseudo_betabinomial_p	pseudo_betabinomial_q	pseudo_betabinomial_p_flag	ref.effect	variantInf
+11	92975543	92975544	rs10830963	C	G	0.98350641626	1	15	27	0.666251675248484	1	0.666251675248484	-0.0555555555555556	3:1:4:0.670611437821954:1;5:2:7:0.483033364537632:1;1:0:1:1:1;1:4:5:0.437680992617746:1;2:0:2:0.537344814951996:1;0:1:1:1:1;1:3:4:0.350181761327904:1;2:1:3:1:1

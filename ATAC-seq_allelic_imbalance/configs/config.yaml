@@ -1,0 +1,158 @@
+### tools ###
+plink:
+    /usr/local/gtb/vendor/bin/plink-1.9
+bcftools:
+    /cluster/ifs/users/narisu/anaconda/envs/ame/bin/bcftools
+tabix:
+    /cluster/ifs/users/narisu/bin/tabix
+perllib:
+    /usr/local/gtb/lib/perl5
+### files and dirs ###
+hg38:
+    /cluster/ifs/projects/collins/annot/GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.mfa
+chrom:
+    data/chr_list.txt:
+chrom_info:
+    /cluster/ifs/users/narisu/github/MGS/projects/ATAC-seq_allelic_imbalance/data/example_data/hg38.mfa.fai:
+subjects:
+    data/subjects.txt
+tfsubjects:
+    data/tfsubjects.txt
+celltype:
+    Islet
+data:
+    /cluster/ifs/users/narisu/github/MGS/projects/ATAC-seq_allelic_imbalance/data/example_data
+results:
+    /cluster/ifs/users/narisu/github/MGS/projects/ATAC-seq_allelic_imbalance/data/example_output
+snph5:
+    /cluster/ifs/users/narisu/github/MGS/projects/ATAC-seq_allelic_imbalance/data/example_output/snps_h5
+### scripts ###
+density:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/density_motifi_information_content.R
+information:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/tf_information_content.plx
+highlight:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/scatter_plot_label_one_sig.R
+prepare:
+    scripts/prepare_data_stouffer_bb.plx
+meta:
+    /cluster/ifs/users/narisu/github/ATAC-seq_allelic_imbalance/scripts/metaAnalysis_AllelicImbalance_BetaBinomPseudoCount.R
+correlation:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/tf_target_gene_correlation.R
+binomial:
+    scripts/performBinomAndBetabinomTests.R
+betabinomial:
+    scripts/performBetabinomTests.R
+sankey:
+    ../scripts/sankey_plot.R',
+count:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/count_signals_with_full_het_set.plx
+capture:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/samples_for_signal_capture.R
+violin:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/violin_ab.R
+union:
+    scripts/bed_union
+manhattan:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/scatter_plot_label_one_sig.R
+fisher:
+    /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/fisherExactTest_ASI.R
+     
+
+glucose: {
+    study: Glucose_Sinnott_armstrong_et_al_2021_GRCh38,
+    credible : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/Glucose_Sinnott_armstrong_et_al_2021_GRCh38.bed,
+    credible_alleles : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/Glucose_Sinnott_armstrong_et_al_2021_GRCh38_alleles.bed
+}
+HbA1C: {
+    study: HbA1c_Sinnott_armstrong_et_al_2021_GRCh38,
+    credible : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/HbA1c_Sinnott_armstrong_et_al_2021_GRCh38.bed,
+    credible_alleles : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/HbA1c_Sinnott_armstrong_et_al_2021_GRCh38_alleles.bed
+}
+FG: {
+    study: Fasting_glucose_Dupuis_J_2010_GRCh38,
+    credible : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/Fasting_glucose_Dupuis_J_2010_GRCh38.bed,
+    credible_alleles : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/Fasting_glucose_Dupuis_J_2010_GRCh38_alleles.bed
+}
+RG: {
+    study: RG_Lagou_et_al_2023_GRCh38,
+    credible : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/RG_Lagou_et_al_2023_GRCh38.bed,
+    credible_alleles : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/RG_Lagou_et_al_2023_GRCh38_alleles.bed
+}
+# ldsc
+study:
+    #body_BMIz:
+    #fasting_glucose_wojcik_2019:
+    glucose:
+    hba1c:
+    MAGIC1000G_2hGlu:
+    MAGIC1000G_FG:
+    MAGIC1000G_FI:
+    T1D_chiou_2021:
+    #European_T2D:
+    RA_okada:
+    trans_ancestry_T2D:
+    #IBD_DeLange2017:
+    #UC_DeLange2017:
+    #EA3_Lee2018:
+    #Height_Yengo2018:
+    #CD_DeLange2017:
+    #Testosterone:
+    #Total_protein:
+    #autism_matoba_matoba:
+    #body_BMI_yengo:
+    #breast_cancer_zhang:
+
+cores:
+    64
+# software
+python:
+    /cluster/ifs/users/narisu/anaconda/bin/python
+feature_selection:
+    /cluster/ifs/users/narisu/github/pops/pops.feature_selection.py
+predict_scores:
+    /cluster/ifs/users/narisu/github/pops/pops.predict_scores.py
+magma:
+    /cluster/ifs/users/narisu/github/CELLECT/magma/bin/static/magma 
+ldsc:
+    /cluster/ifs/users/narisu/github/CELLECT/ldsc
+# data:
+gwas_sum:
+    /cluster/ifs/projects/collins/single_cell/tenX/celltype_specificity/GSIS/results/munged_sums
+refld:
+    /cluster/ifs/users/narisu/github/CELLECT/data/ldsc/1000G_EUR_Phase3_plink
+hapmap:
+    /cluster/ifs/projects/collins/external/ShuibingChenLab/hESC2beta_T2D_ko_genes/GRCh38_analysis/ATAC-seq/data/w_hm3.snplist.id
+gene_annot:
+    /cluster/ifs/users/narisu/github/gene_features/data/Public_PoPS_data/data/magma_0kb.genes.annot 
+feature:
+    /cluster/ifs/users/narisu/github/gene_features/data/Public_PoPS_data/data/PoPS.features.txt.gz
+ensg2symbol:
+    /cluster/ifs/users/narisu/github/gene_features/resources/ensg2symbol.txt
+gene_loc:
+    /cluster/ifs/users/narisu/github/gene_features/data/Public_PoPS_data/data/gene_loc.txt
+control_features:
+    /cluster/ifs/users/narisu/github/gene_features/data/Public_PoPS_data/data/control.features
+chrom:
+    1:
+    2:
+    3:
+    4:
+    5:
+    6:
+    7:
+    8:
+    9:
+    10:
+    11:
+    12:
+    13:
+    14:
+    15:
+    16:
+    17:
+    18:
+    19:
+    20:
+    21:
+    22:

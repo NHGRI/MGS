@@ -1,0 +1,304 @@
+#!/usr/bin/env perl
+
+use strict;
+use Getopt::Long;
+use Pod::Usage;
+use GTB::File qw(Open);
+
+our %Opt;
+our $CalcFunc = sub { return 0 };
+our $RegionNo = 0;
+my $EMPTY = q{};
+
+=head1 NAME
+
+bed_union - merge overlapping BED-formatted regions
+
+=head1 SYNOPSIS
+
+Merge overlapping BED-formatted regions:
+
+    bed_union in.bed [in2.bed...] > out.bed
+
+    bed_union --manual for complete documentation.
+
+=head1 DESCRIPTION
+
+Combine regions specified in one or more bed files by taking the union of
+these regions and merging overlapping regions.
+
+=cut
+
+process_commandline();
+my $ra_feat = read_features();
+print STDERR "Initial number of subregions: " . scalar(@$ra_feat) . "\n";
+
+my %chr_feat;
+for my $f (@$ra_feat) {
+    my $key = $Opt{subtotal} ? "$f->{chrom}/$f->{$Opt{subtotal}}" : $f->{chrom};
+    push @{ $chr_feat{$key} }, $f;
+}
+if ($Opt{debug}) {
+    if ($Opt{name}) {
+        print STDERR "For ", scalar(keys %chr_feat), " $Opt{subtotal}/chroms\n";
+    }
+    else {
+        print STDERR "On ", scalar(keys %chr_feat), " chromosomes\n";
+    }
+}
+
+my @chr;
+{
+    no warnings;
+    @chr = sort { (substr($a,3,1) gt '9') <=> (substr($b,3,1) gt '9')
+        || substr($a,3) <=> substr($b,3) 
+        || $a cmp $b } keys %chr_feat;
+}
+my $final = 0;
+for my $chr (@chr) {
+    print STDERR $chr, ": " if $Opt{debug};
+    my $ra_joined = join_ranges($chr_feat{$chr});
+    write_ranges($ra_joined);
+    $final += scalar(@$ra_joined);
+}
+print STDERR "Final number of subregions: $final\n";
+
+################
+
+sub write_ranges {
+    my ($ra) = @_;
+    foreach my $f (@$ra){
+        print join("\t", $f->{chrom}, $f->{start}, $f->{end}, $f->{name},
+                ($Opt{calculate} || $Opt{subtotal} =~ /^(score|strand)$/
+                    ? ($f->{score} || 0,
+                        ($Opt{subtotal} eq 'strand' ? $f->{strand} : ()))
+                    : ()),
+                ), "\n";
+    }
+}
+
+sub join_ranges {
+    my ($ra) = @_;
+    print STDERR scalar(@$ra), " -> " if $Opt{debug};
+    if (!$Opt{sorted}) {
+        my @sorted = sort { $a->{start} <=> $b->{start} } @$ra;
+        $ra = \@sorted;
+    }
+    my @feat;
+    my $n;
+    for (my $i = 0; $i < @$ra; ++$i) {
+        my %f = %{$ra->[$i]};
+        ++$RegionNo;
+        if ($Opt{subtotal} ne 'name') {
+            if (!$Opt{'join'}) {
+                $f{name} = sprintf $Opt{format}, $RegionNo;
+            }
+        }
+        if (!$Opt{calculate}) {
+            $f{score} = 0;
+        }
+        elsif ($Opt{calculate} eq 'count') {
+            $f{score} = 1;
+        }
+        my $j = $i + 1;
+        while ($j < @$ra && $f{end} >= $ra->[$j]->{start}) {
+            $f{end} = max($f{end}, $ra->[$j]->{end});
+            $f{score} = $CalcFunc->($f{score}, $ra->[$j]->{score}, $j-$i+1);
+            if ($Opt{'join'}) {
+                $f{name} .= $Opt{'join'} . $ra->[$j]->{name};
+            }
+            ++$j;
+        }
+        $i = $j - 1;
+        push @feat, \%f;
+    }
+    print STDERR scalar(@feat), " after joining overlapping regions\n"
+        if $Opt{debug};
+    return \@feat;
+}
+
+sub max {
+    my ($max, $next) = @_;
+    if ($max eq $EMPTY || ($next ne $EMPTY && $next > $max)) {
+        $max = $next;
+    }
+    return $max;
+}
+
+sub min {
+    my ($min, $next) = @_;
+    if ($min eq $EMPTY || ($next ne $EMPTY && $next < $min)) {
+        $min = $next;
+    }
+    return $min;
+}
+
+sub count {
+    my ($current, $next, $count) = @_;
+    return $count;
+}
+
+sub avg {
+    my ($current, $next, $count) = @_;
+    my $sum = $current * ($count-1) + $next;
+    return $sum / $count;
+}
+
+sub read_features {
+    my @feats; 
+    if (!@ARGV) {
+        @ARGV = qw(-);
+    }
+    for my $file (@ARGV) {
+        my $fh = Open($file);
+        while (<$fh>) {
+            if (m/(^\w+)\s+(\d+)\s+(\d+)    # required coords
+                    \s*(\S*)                # optional name
+                    \s*([+-]?\d*(?:\.\d+)?) # optional score
+                    \s*([.+-])?             # optional strand
+                    /sx){
+                my $chr   = $1;
+                my $start = $2;
+                my $end   = $3;
+                my $name  = $4 || $EMPTY;
+                my $score = $5;
+                my $strand= $6 || $EMPTY;
+                if (!defined $score) {
+                    $score = $EMPTY;
+                }
+                # Handles BedGraph case, where score is in 4th field
+                if ($score eq $EMPTY && $name =~ /^[+-]?\d+(?:\.\d+)?$/) {
+                    $score = $name;
+                }
+                if ($end <= $start ){
+                    warn "Start cannot be smaller than end at line $.; "
+                        . "ignoring:\n$_";
+                }
+                else {
+                    push @feats, {
+                        chrom   => $chr,
+                        start   => $start,
+                        end     => $end,
+                        name    => $name,
+                        score   => $score,
+                        strand  => $strand,
+                    };
+                }
+            }
+        }
+    }
+    if (!@feats){
+        warn "No valid sub regions found in input file\n";
+    }
+    return \@feats;
+}
+
+sub process_commandline{
+    %Opt = (debug       => 0,
+            format      => 'region%d',
+            );
+    GetOptions(\%Opt, qw(
+             debug+ calculate=s format=s join=s name sorted subtotal=s
+             help+ manual version
+             )) || pod2usage(0);
+    pod2usage(verbose => 2) if $Opt{manual};
+    pod2usage(verbose => $Opt{help}-1) if $Opt{help};
+    die "bed_union, ", q$Revision: 1.12 $, "\n" if $Opt{version};
+
+    if ($Opt{name}) {
+        $Opt{subtotal} = "name";
+    }
+    if ($Opt{subtotal}) {
+        if ($Opt{subtotal} =~ /^(name|score|strand)$/i) {
+            $Opt{subtotal} = lc $Opt{subtotal};
+        }
+        else {
+            pod2usage("--subtotal must be one of name, score, or strand");
+        }
+    }
+    else {
+        $Opt{subtotal} = $EMPTY;
+    }
+    if ($Opt{calculate}) {
+        if ($Opt{calculate} =~ /^(max|min|count|avg)$/i) {
+            $Opt{calculate} = lc($Opt{calculate});
+            $CalcFunc = \&{ $Opt{calculate} };
+        }
+        else {
+            pod2usage("--calculate must be one of max, min, count, or avg");
+        }
+    }
+}
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--calculate> max|min|count|avg
+
+How scores will be determined.  If not specified, no score will be included.
+
+=item B<--debug>
+
+Provides debugging output on STDERR. 
+
+=item B<--format> SPRINTF_FORMAT
+
+Specify a format to use for generating region names.  The default is
+"region%d".
+
+=item B<--join> DELIM
+
+Create the new region name by concatenating together the names of the regions
+that overlap to form it.  If this option is supplied, it overrides the
+C<--format> option.
+
+=item B<--name>
+
+Shorthand for C<--subtotal name>.
+
+=item B<--subtotal> name|strand|score
+
+Only merge features that share the same value for the feature.  Possible 
+features include 'name', 'strand', or even 'score'.  See C<--name> option for
+shorthand.
+
+=item B<-h|--help>
+
+Show brief usage message; use C<--manual> to display complete documentation.
+
+=back
+
+=head1 FILES
+
+Input and output are UCSC Browser Extensible Data (BED) format files.  Only
+the first three fields (chrom, start, stop) are required.  The fourth field
+is optional.
+
+Output is written to STDOUT, and may be redirected into a file.
+
+=head1 AUTHOR
+
+ Peter Chines - pchines@mail.nih.gov
+
+=head1 LEGAL
+
+This software/database is "United States Government Work" under the terms of
+the United States Copyright Act.  It was written as part of the authors'
+official duties for the United States Government and thus cannot be
+copyrighted.  This software/database is freely available to the public for
+use without a copyright notice.  Restrictions cannot be placed on its present
+or future use. 
+
+Although all reasonable efforts have been taken to ensure the accuracy and
+reliability of the software and data, the National Human Genome Research
+Institute (NHGRI) and the U.S. Government does not and cannot warrant the
+performance or results that may be obtained by using this software or data.
+NHGRI and the U.S. Government disclaims all warranties as to performance,
+merchantability or fitness for any particular purpose. 
+
+In any work or product derived from this material, proper attribution of the
+authors as the source of the software or data should be made, using "NHGRI
+FUSION Research Group" as the citation. 
+
+=cut

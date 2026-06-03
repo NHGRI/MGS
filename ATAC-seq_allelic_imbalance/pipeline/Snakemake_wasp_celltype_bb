@@ -1,0 +1,446 @@
+import glob
+
+GENOME='/cluster/ifs/projects/collins/annot/GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.chr.mfa'
+WASP='/cluster/ifs/users/narisu/github/WASP-20221115/WASP'
+Rscript='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/Rscript'
+
+def read_samples(file=None):
+    """
+    Function to get sample names from a specified
+    in the configuration. Input file is expected to have 1
+    column of sample ids with no header.
+    """
+    if file == None:
+        file=config['data']+'/meta/subjects.txt'
+    f = open(file, "r")
+    samp_dict = {}
+    for line in f:
+        words = line.strip().split()
+        samp_dict[words[0]] = words[0]
+    return samp_dict
+
+SAMP_TO_MAP = read_samples()
+
+rule all:
+    input:
+        #config['snph5'] + '/haplotypes.h5',
+        #expand(config['results']+'/clip/{sample}.keep.merge.rmdup.sort.bam',
+        #    sample=read_samples().keys()),
+        #expand(config['results']+'/as_counts/{sample}.as_counts.txt.gz',
+        #    sample=read_samples().keys()),
+        #expand(config['results']+'/heterozygotes/{sample}.hets',
+        #    sample=read_samples().keys()),
+        #expand(config['results']+'/allelic_imbalance/betabinomial_tests_{sample}.bed',
+        #    sample=read_samples().keys()),
+        #config['results']+'/combined_narrow_peaks/combined_narrow_peaks.bed',
+        #expand(config['results']+'/allelic_imbalance/betabinomial_tests_{sample}.bed',
+        #    sample=read_samples().keys()),
+        #expand(config['results']+'/ATAC_peak_SNPs_betabinomial/ATAC_peak_SNPs_{sample}.bed',
+        #       sample=read_samples().keys()),
+        # Beta binomial test of all SNPs in ATAC-seq peaks
+        config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom.txt',
+        # T2D and related traits summary
+        config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_T2D.txt',
+        config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_glucose.txt',
+        config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_RG.txt',
+        config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_HbA1C.txt',
+        
+rule vcf2h5:
+    """ 
+    Convert VCF data files to HDF5 format using WASP tool (https://github.com/bmvdgeijn/WASP). 
+    VCF file has heterozygous imputed genotypes of the subjects. Imputation/sequencing based genotypes 
+    of all samples of interest in vcf format is/are required.
+    """
+    input:
+        config['data'] + '/genotypes/chr11.het.vcf.gz',
+        chrom=config['chrom_info'],
+    params:
+        vcfs=config['data'] + '/genotypes/chr*.het.vcf.gz ',
+    output:
+        snp_index=config['snph5'] + '/snp_index.h5',
+        snp_tab=config['snph5'] + '/snp_tab.h5',
+        haplotype=config['snph5'] + '/haplotypes.h5'
+    shell:
+        '{WASP}/snp2h5/snp2h5 '
+        '  --chrom {input.chrom} '
+        '  --format vcf '
+        '  --snp_index {output.snp_index} '
+        '  --snp_tab {output.snp_tab} '
+        '  --haplotype {output.haplotype} '
+        '  {params.vcfs}'
+
+rule find_intersecting_snps_paired_end:
+    """
+    Find intersecting SNPs using WASP script. A required reference genome aligned ATAC-seq 
+    read bam files, one per sample of interest are required.      
+    """
+    resources:
+        mem_mb=10000
+    input:
+        snp_index=config['snph5']+'/snp_index.h5',
+        snp_tab=config['snph5']+'/snp_tab.h5',
+        haplotype=config['snph5']+'/haplotypes.h5',
+        sample=config['data']+'/meta/subjects.txt',
+        bam=config['data']+'/subject_bam/{sample}.bam',
+    params:
+        python='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/python',
+        prefix=config['results']+'/find_intersecting_snps'
+    output:
+        fq1=temp(config['results']+'/find_intersecting_snps/{sample}.remap.fq1.gz'),
+        fq2=temp(config['results']+'/find_intersecting_snps/{sample}.remap.fq2.gz'),
+        keep_bam=temp(config['results']+'/find_intersecting_snps/{sample}.keep.bam'),
+        remap_bam=temp(config['results']+'/find_intersecting_snps/{sample}.to.remap.bam')
+    shell:
+         '{params.python} {WASP}/mapping/find_intersecting_snps.py '
+             '--is_paired_end '
+             '--is_sorted '
+             '--output_dir {params.prefix} '
+             '--snp_tab {input.snp_tab} '
+             '--snp_index {input.snp_index} '
+             '--haplotype {input.haplotype} '
+             '--samples {input.sample} '
+             '{input.bam}'
+         
+rule map_bwa_paired_end2:
+    """
+    Map reads a second time using bwa (https://bio-bwa.sourceforge.net/bwa.shtml).
+    """
+    input:
+        fq1=config['results']+'/find_intersecting_snps/{sample}.remap.fq1.gz',
+        fq2=config['results']+'/find_intersecting_snps/{sample}.remap.fq2.gz',
+        keep_bam=config['results']+'/find_intersecting_snps/{sample}.keep.bam',
+        remap_bam=config['results']+'/find_intersecting_snps/{sample}.to.remap.bam'
+    params:
+        bwa='/home/narisu/bin/bwa',
+        sam='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/samtools',
+        prefix=config['results']+'/map2/',
+    threads: 2 
+    resources:
+        mem_mb=20000
+    output:
+        bai=temp(config['results']+'/map2/{sample}.bai'),
+        bam=temp(config['results']+'/map2/{sample}.bam'),
+    shell:
+        'mkdir -p {params.prefix}; '
+        '{params.bwa} mem -M -t {threads} {GENOME} {input.fq1} {input.fq2} | '
+            '{params.sam} view -Suh -q 30 -F3840  | '
+            '{params.sam} sort -O bam -T {params.prefix}/{wildcards.sample} '
+            '-@ {threads} -m 2818572288 -> {output.bam}; '
+            '{params.sam} index {output.bam} {output.bai}; '
+
+rule filter_remapped_reads:
+    """
+    Filter reads from second mapping step.
+    """
+    input:
+        config['results']+'/map2/{sample}.bai',
+        to_remap_bam=config['results']+'/find_intersecting_snps/{sample}.to.remap.bam',
+        remap_bam=config['results']+'/map2/{sample}.bam',
+    threads: 1
+    params:
+        python='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/python',
+    output:
+        keep_bam=temp(config['results']+'/filter_remapped_reads/{sample}.keep.bam')
+    shell:
+        '{params.python} {WASP}/mapping/filter_remapped_reads.py '
+            '{input.to_remap_bam} {input.remap_bam} {output.keep_bam}'
+
+rule merge_bams:
+    """
+    Merge 'keep' BAM files from mapping steps 1 and 2,
+    then sort and index
+    """
+    input:
+        keep1=config['results']+'/find_intersecting_snps/{sample}.keep.bam',
+        keep2=config['results']+'/filter_remapped_reads/{sample}.keep.bam'
+    threads: 2 
+    params: 
+        dir=config['results']+'/merge',
+        sam='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/samtools'
+    output:
+        merge=temp(config['results']+'/merge/{sample}.keep.merge.bam'),
+        sort=temp(config['results']+'/merge/{sample}.keep.merge.sort.bam'),
+        bai=temp(config['results']+'/merge/{sample}.keep.merge.sort.bam.bai')
+    shell:
+        'mkdir -p {params.dir}/{wildcards.sample}; '
+        '{params.sam} merge {output.merge} {input.keep1} {input.keep2}; '
+        '{params.sam} sort -m 10G -@ {threads} -T  {params.dir}/{wildcards.sample}/tmp -o {output.sort} {output.merge}; '
+        '{params.sam} index {output.sort}'
+    
+# do not do for single end reads #
+rule rmdup_pe:
+    """
+    Remove duplicate read pairs.
+    """
+    input:
+        config['results']+'/merge/{sample}.keep.merge.sort.bam'
+    threads: 2 
+    params:
+        python='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/python',
+        dir=config['results']+'/rmdup',
+        sam='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/samtools',
+    output:
+        rmdup=temp(config['results']+'/rmdup/{sample}.keep.merge.rmdup.bam'),
+        sort=temp(config['results']+'/rmdup/{sample}.keep.merge.rmdup.sort.bam')
+    shell:
+        'mkdir -p {params.dir}/{wildcards.sample};' 
+        '{params.python} {WASP}/mapping/rmdup_pe.py {input} {output.rmdup} ;'
+        '{params.sam} sort -m 4G -@ {threads} -T  {params.dir}/{wildcards.sample}/tmp -o {output.sort} {output.rmdup}; '
+        '{params.sam} index {output.sort}'
+        
+rule clipoverlap:
+    """
+    Remove one copy of overlapping read pairs using bamUtil (https://github.com/statgen/bamUtil).
+    """
+    input:
+        config['results']+'/rmdup/{sample}.keep.merge.rmdup.sort.bam'
+    threads: 2 
+    params:
+        dir=config['results']+'/clip',
+        python='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/python',
+        clip='/cluster/ifs/users/narisu/anaconda/envs/bamutil/bin/bam'
+    output:
+        clip=temp(config['results']+'/clip/{sample}.keep.merge.rmdup.bam'),
+        sort=config['results']+'/clip/{sample}.keep.merge.rmdup.sort.bam'
+    shell:
+        'mkdir -p {params.dir}/{wildcards.sample};' 
+        '{params.clip} clipOverlap --in {input} --out {output.clip}; '
+        'samtools sort -m 4G -@ {threads} -T  {params.dir}/{wildcards.sample}/tmp -o {output.sort} {output.clip}; '
+        'samtools index {output.sort}'
+        
+rule get_as_counts:
+    """
+    Get allele-specific read counts for SNPs.
+    """
+    input:
+        bam=config['results']+'/clip/{sample}.keep.merge.rmdup.sort.bam',
+        snp_index=config['snph5']+'/snp_index.h5',
+        snp_tab=config['snph5']+'/snp_tab.h5',
+        haplotype=config['snph5']+'/haplotypes.h5',
+        chrom='/cluster/ifs/projects/collins/annot/GRCh38/hg38.mfa.fai',
+    params:
+        python='/cluster/ifs/users/narisu/anaconda/envs/ame/bin/python',
+        samp=lambda wildcards: SAMP_TO_MAP[wildcards.sample],
+        ref_as=config['results']+'/as_counts/{sample}.ref_as_counts.h5',
+        alt_as=config['results']+'/as_counts/{sample}.alt_as_counts.h5',
+        other_as=config['results']+'/as_counts/{sample}.other_as_counts.h5',
+        read_counts=config['results']+'/as_counts/{sample}.read_counts.h',
+    output:
+        txt_counts=config['results']+'/as_counts/{sample}.as_counts.txt.gz'
+    shell:
+        '{params.python} {WASP}/CHT/bam2h5.py '
+            '--chrom {input.chrom} '
+            '--snp_index {input.snp_index} '
+            '--snp_tab {input.snp_tab} '
+            '--haplotype {input.haplotype} '
+            '--individual {params.samp} '
+            '--ref_as_counts {params.ref_as} '
+            '--alt_as_counts {params.alt_as} '
+            '--other_as_counts {params.other_as} '
+            '--read_counts {params.read_counts} '
+            '--txt_counts {output.txt_counts} '
+            '{input.bam};'
+        # clean uncessary files
+        'rm {params.ref_as} {params.alt_as} {params.other_as} {params.read_counts}; '
+
+rule get_hets:
+    """
+    Get hets SNPs.
+    """
+    input:
+        txt_counts=config['results']+'/as_counts/{sample}.as_counts.txt.gz',
+    params:
+        subset="/home/pchines/bin/vcf_subset.pl",
+    output:
+        hets=config['results']+'/heterozygotes/{sample}.hets',
+    shell:
+        "gzip -dc {input.txt_counts} | "
+        'perl -lane \'print join("\t", @F[0..1], "$F[0]:$F[1]", @F[2..3,5,6],$F[5]+$F[6], 0, 0, 0, 0, 0) if /0\|1/ || /1\|0/;BEGIN{{print join("\t", qw(contig position variantID refAllele altAllele refCount altCount totalCount lowMAPQDepth lowBaseQDepth rawDepth otherBases improperPairs))}}\' > {output.hets}; ' 
+
+rule perform_binom_and_beta_binomial:
+    """
+    Perform binomial and beta binomial tests.
+    Strictly speaking these results are not used, but used
+    to subset only those SNPs that lie in ATAC-seq peak
+    regions for later betabinomial tests.
+    """
+    input:
+        config['results']+'/heterozygotes/{sample}.hets',
+    resources:
+        mem_mb=40000
+    params:
+        perform=config['binomial'],
+        prefix=config['results']+'/allelic_imbalance/betabinomial_tests',
+        outdir=config['results']+'/heterozygotes',
+        cov=1,
+    output:
+        config['results']+'/allelic_imbalance/betabinomial_tests_{sample}.bed',
+    shell:
+        # create a file of hets - avoid testing samples with
+        # Modify below -- only require total count >= 1 per Mike Boehnke
+        '{Rscript} {params.perform} {input} {output} {params.cov}; '
+
+rule combine_narrow_peaks:
+    """
+    Combine peaks of all samples for a master list.
+    """
+    input:
+        expand(config['data']+'/macs2_narrow/{sample}_peaks.narrowPeak.noblacklist',
+            sample=read_samples().keys()),
+        sample=config['data']+'/meta/subjects.txt',
+    params:
+        perllib='lib',
+        union=config['union'],
+        dir=config['data']+'/macs2_narrow',
+    output:
+        config['results']+'/combined_narrow_peaks/combined_narrow_peaks.bed'
+    shell:
+        # get bed files
+        'bed=$(for i in `cat {input.sample}`; do ls {params.dir}/${{i}}_peaks.narrowPeak.noblacklist ; done | '
+        'perl -lane \'push @f, $_; END{{print join(" ", @f)}}\'); '
+        # union
+        '{params.union} $bed > {output}; '
+
+### beta binomial test across all SNPs in peaks ###
+rule SNPs_in_ATAC_peaks:
+    """
+    Generate a list of hets of interest for whom to do.
+    allelic imbalance test
+    """
+    input:
+        expand(config['results']+'/allelic_imbalance/betabinomial_tests_{sample}.bed',
+            sample=read_samples().keys()),
+        peak=config['results']+'/combined_narrow_peaks/combined_narrow_peaks.bed'
+    params:
+        indir=config['results']+'/allelic_imbalance/betabinomial_tests_'
+    output:
+        config['results']+'/ATAC_peak_SNPs_betabinomial/ATAC_peak_SNPs_{sample}.bed',
+    shell:
+        '/home/pchines/bin/bedtools intersect -a {params.indir}{wildcards.sample}.bed '
+        '-b {input.peak} | '
+        'perl -lane \'print join("\t", @F[0..10])\' | sort | uniq '
+        '> {output} ; '
+
+rule SNPs_in_ATAC_peaks_prepare_stouffer:
+    """
+    Generate input for stouffer test for sampes of interest.
+    """
+    input:
+        expand(config['results']+'/ATAC_peak_SNPs_betabinomial/ATAC_peak_SNPs_{sample}.bed',
+               sample=read_samples().keys()),
+        script=config['prepare'],
+    params:
+        dir=config['results'],
+        count_samples=2,
+        total_read=6
+    output:
+        samples=config['results']+'/ATAC_peak_SNPs_betabinomial/sample_credible.samples',
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_input_betabinom.txt',
+    shell:
+        'for i in {params.dir}/ATAC_peak_SNPs_betabinomial/ATAC_peak_SNPs*bed; do export dir=$i; '
+        'perl -lane \'$dir=$ENV{{dir}}; $s++; $dir =~ s/.*\/ATAC_peak_SNPs_//; $dir=~s/\.bed$//; print $dir if $s>0\' $i | uniq ; done > {output.samples}; '
+        'export dir={params.dir}; '
+        "string=$(grep -vE \'EndoC|ABE1388.sp\' {output.samples} | "
+        'perl -ne \'chomp; ; $d=$ENV{{dir}}; print "$d/ATAC_peak_SNPs_betabinomial/ATAC_peak_SNPs_$_".".bed "\'); '
+        "perl -I /usr/local/gtb/lib/perl5 {input.script} -count {params.count_samples} -read {params.total_read}  $string "
+        "> {output.stouffer}; "
+
+rule SNPs_in_ATAC_peaks_credible_stouffer:
+    """
+    Stouffer test for SNPs in ATAC peaks. 
+    """
+    input:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_input_betabinom.txt',
+    params:
+        rscript='/cluster/ifs/projects/collins/users/yant/anaconda3/envs/seurat4/bin/Rscript',
+        script=config['betabinomial']
+    output:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom.txt',
+    shell:
+        "{params.rscript} {params.script} {input.stouffer} {output.stouffer}; "
+
+rule SNPs_in_ATAC_peaks_credible_stouffer_T2D:
+    """
+    Stouffer test for SNPs in ATAC peaks. 
+    """
+    input:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom.txt',
+        credible='/cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/T2D_trans_ancestry_Mahajan_et_al_2022_GRCh38.bed',
+    params:
+        bedtools='/home/pchines/bin/bedtools',
+    output:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_T2D.txt',
+    shell:
+        'head -1 {input.stouffer} > {output}; '
+        '{params.bedtools} intersect -wao -a {input.stouffer} -b {input.credible} | '
+        'perl -lane \'@F=split(/\\t/); $F[3] = $F[18]; '
+        'print join("\\t", @F[0..14]) if $F[15] ne "." && $F[1] eq $F[16] && $F[2] eq $F[17] \' | sort | uniq >> {output}; '
+
+rule SNPs_in_ATAC_peaks_credible_stouffer_glucose:
+    """
+    Stouffer test for SNPs in ATAC peaks. 
+    """
+    input:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom.txt',
+        credible=config['glucose']['credible'],
+    params:
+        bedtools='/home/pchines/bin/bedtools',
+    output:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_glucose.txt',
+    shell:
+        'head -1 {input.stouffer} > {output}; '
+        '{params.bedtools} intersect -wao -a {input.stouffer} -b {input.credible} | '
+        'perl -lane \'@F=split(/\\t/); $F[3] = $F[18]; '
+        'print join("\\t", @F[0..14]) if $F[15] ne "." && $F[1] eq $F[16] && $F[2] eq $F[17] \' | sort | uniq >> {output}; '
+
+rule SNPs_in_ATAC_peaks_credible_stouffer_HbA1C:
+    """
+    Stouffer test for SNPs in ATAC peaks. 
+    """
+    input:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom.txt',
+        credible=config['HbA1C']['credible'],
+    params:
+        bedtools='/home/pchines/bin/bedtools',
+    output:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_HbA1C.txt',
+    shell:
+        'head -1 {input.stouffer} > {output}; '
+        '{params.bedtools} intersect -wao -a {input.stouffer} -b {input.credible} | '
+        'perl -lane \'@F=split(/\\t/); $F[3] = $F[18]; '
+        'print join("\\t", @F[0..14]) if $F[15] ne "." && $F[1] eq $F[16] && $F[2] eq $F[17] \' | sort | uniq >> {output}; '
+
+rule SNPs_in_ATAC_peaks_credible_stouffer_RG:
+    """
+    Stouffer test for SNPs in ATAC peaks. 
+    """
+    input:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom.txt',
+        credible=config['RG']['credible'],
+    params:
+        bedtools='/home/pchines/bin/bedtools',
+    output:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_RG.txt',
+    shell:
+        'head -1 {input.stouffer} > {output}; '
+        '{params.bedtools} intersect -wao -a {input.stouffer} -b {input.credible} | '
+        'perl -lane \'@F=split(/\\t/); $F[3] = $F[18]; '
+        'print join("\\t", @F[0..14]) if $F[15] ne "." && $F[1] eq $F[16] && $F[2] eq $F[17] \' | sort | uniq >> {output}; '
+
+rule SNPs_in_ATAC_peaks_credible_stouffer_FG:
+    """
+    Stouffer test for SNPs in ATAC peaks. 
+    """
+    input:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom.txt',
+        credible=config['FG']['credible'],
+    params:
+        bedtools='/home/pchines/bin/bedtools',
+    output:
+        stouffer=config['results']+'/ATAC_peak_SNPs_stouffer_allelic_imbalance_betabinom_FG.txt',
+    shell:
+        'head -1 {input.stouffer} > {output}; '
+        '{params.bedtools} intersect -wao -a {input.stouffer} -b {input.credible} | '
+        'perl -lane \'@F=split(/\\t/); $F[3] = $F[18]; '
+        'print join("\\t", @F[0..14]) if $F[15] ne "." && $F[1] eq $F[16] && $F[2] eq $F[17] \' | sort | uniq >> {output}; '
+
