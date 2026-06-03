@@ -1,3 +1,3 @@
 # lib
 
-Libraries and configurations used by modules.
+Commonly used libraries.
