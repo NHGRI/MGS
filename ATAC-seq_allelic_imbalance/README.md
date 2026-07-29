@@ -40,5 +40,5 @@ This pipeline will generate a file called "ATAC_peak_SNPs_stouffer_allelic_imbal
    14. ref.effect: reads_covering_reference_allele/reads_covering_both_alleles - 0.5   
 
 ### 3. Reference
-
+See preprint at https://www.medrxiv.org/content/10.64898/2026.07.14.26358094v1 for details.
 
