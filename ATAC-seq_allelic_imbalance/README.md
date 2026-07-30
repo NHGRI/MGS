@@ -5,10 +5,10 @@ This is the core pipeline to perform an allelic imbalance analsis of ATAC-seq re
 A sample set of data is included in the data/example_data. Note that this data differs different from actual data used in the manuscrtip. Two types of files are needed in minimum to run this pipeline. They are described in the next section.
 
 # Prerequisites
-There are a couple of prerequisite input files: 1) subject level bam file of paired-end raw ATAC-seq sequence reads to GRCh38 reference genome; and 2) vcf file of imputed genotypes of the subjects using a tool like TOPMed Imputation Server (https://imputation.biodatacatalyst.nhlbi.nih.gov). 
+There are a couple of prerequisite input files: 1) donor level bam file of paired-end raw ATAC-seq sequence reads to GRCh38 reference genome; 2) ATAC-seq peaks in each donor is prepared in a bed file format; and 3) vcf file of imputed genotypes of the donors using a tool like TOPMed Imputation Server (https://imputation.biodatacatalyst.nhlbi.nih.gov). 
 
 # Components
-This workflow performs following tasks: 1) identification of ATAC-seq reads overlapping a SNP in a subject; 2) correction of reference allele mapping bias for each subject where a read overlaps a SNP alternate allele; 3) generation of read counts mapping to reference and alternate alleles across all SNPs for each subject; 4) beta-binomial test of allelic imbalance of ATAC-reads at heterozygous sites for each subject; and 5) meta-analysis of beta-binomial test results at each SNP site across all subjects; 6) multiple testing correction on the beta-binomial test results across all tested SNP sites.
+This workflow performs following tasks: 1) identification of ATAC-seq reads overlapping a SNP in a donor; 2) correction of reference allele mapping bias for each donor where a read overlaps a SNP alternate allele; 3) generation of read counts mapping to reference and alternate alleles across all SNPs for each donor; 4) beta-binomial test of allelic imbalance of ATAC-reads at heterozygous sites for each donor; and 5) meta-analysis of beta-binomial test results at each SNP site across all donors; 6) multiple testing correction on the beta-binomial test results across all tested SNP sites.
 
 # Workflow
 ### 1. Software needed
