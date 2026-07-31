@@ -224,7 +224,7 @@ for (i in 1:nrow(in.data)) {
     total.count.cols <- seq(3,endn,5)
     p.val.cols <- seq(4,endn,5)
   
-    ref.count.mat <- as.numerbetabinom.test_2ic(r[ref.count.cols])
+    ref.count.mat <- as.numeric(r[ref.count.cols])
     alt.count.mat <- as.numeric(r[alt.count.cols])
     total.count.mat <- as.numeric(r[total.count.cols])
     p.val.mat <- as.numeric(r[p.val.cols])

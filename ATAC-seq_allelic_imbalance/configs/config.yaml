@@ -13,7 +13,7 @@ hg38:
 chrom:
     data/chr_list.txt:
 chrom_info:
-    /cluster/ifs/users/narisu/github/MGS/projects/ATAC-seq_allelic_imbalance/data/example_data/hg38.mfa.fai:
+    /cluster/ifs/users/narisu/github/MGS/ATAC-seq_allelic_imbalance/data/example_data/hg38.mfa.fai:
 subjects:
     data/subjects.txt
 tfsubjects:
@@ -21,11 +21,11 @@ tfsubjects:
 celltype:
     Islet
 data:
-    /cluster/ifs/users/narisu/github/MGS/projects/ATAC-seq_allelic_imbalance/data/example_data
+    /cluster/ifs/users/narisu/github/MGS/ATAC-seq_allelic_imbalance/data/example_data
 results:
-    /cluster/ifs/users/narisu/github/MGS/projects/ATAC-seq_allelic_imbalance/data/example_output
+    /cluster/ifs/users/narisu/github/MGS/ATAC-seq_allelic_imbalance/data/example_output
 snph5:
-    /cluster/ifs/users/narisu/github/MGS/projects/ATAC-seq_allelic_imbalance/data/example_output/snps_h5
+    /cluster/ifs/users/narisu/github/MGS/ATAC-seq_allelic_imbalance/data/example_output/snps_h5
 ### scripts ###
 density:
     /cluster/ifs/projects/collins/single_cell/sn-muscle_parker/scripts/density_motifi_information_content.R
@@ -61,48 +61,25 @@ fisher:
 
 glucose: {
     study: Glucose_Sinnott_armstrong_et_al_2021_GRCh38,
-    credible : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/Glucose_Sinnott_armstrong_et_al_2021_GRCh38.bed,
-    credible_alleles : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/Glucose_Sinnott_armstrong_et_al_2021_GRCh38_alleles.bed
+    credible : data/example_data/Glucose_Sinnott_armstrong_et_al_2021_GRCh38.bed,
+    credible_alleles : data/example_data/Glucose_Sinnott_armstrong_et_al_2021_GRCh38_alleles.bed
 }
 HbA1C: {
     study: HbA1c_Sinnott_armstrong_et_al_2021_GRCh38,
-    credible : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/HbA1c_Sinnott_armstrong_et_al_2021_GRCh38.bed,
-    credible_alleles : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/HbA1c_Sinnott_armstrong_et_al_2021_GRCh38_alleles.bed
+    credible : data/example_data/HbA1c_Sinnott_armstrong_et_al_2021_GRCh38.bed,
+    credible_alleles : data/example_data/HbA1c_Sinnott_armstrong_et_al_2021_GRCh38_alleles.bed
 }
 FG: {
     study: Fasting_glucose_Dupuis_J_2010_GRCh38,
-    credible : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/Fasting_glucose_Dupuis_J_2010_GRCh38.bed,
-    credible_alleles : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/Fasting_glucose_Dupuis_J_2010_GRCh38_alleles.bed
+    credible : data/example_data/Fasting_glucose_Dupuis_J_2010_GRCh38.bed,
+    credible_alleles : data/example_data/Fasting_glucose_Dupuis_J_2010_GRCh38_alleles.bed
 }
 RG: {
     study: RG_Lagou_et_al_2023_GRCh38,
-    credible : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/RG_Lagou_et_al_2023_GRCh38.bed,
-    credible_alleles : /cluster/ifs/users/narisu/github/gwas_database/credible_set_of_SNPs/data/RG_Lagou_et_al_2023_GRCh38_alleles.bed
+    credible : data/example_data/RG_Lagou_et_al_2023_GRCh38.bed,
+    credible_alleles : data/example_data/RG_Lagou_et_al_2023_GRCh38_alleles.bed
 }
 # ldsc
-study:
-    #body_BMIz:
-    #fasting_glucose_wojcik_2019:
-    glucose:
-    hba1c:
-    MAGIC1000G_2hGlu:
-    MAGIC1000G_FG:
-    MAGIC1000G_FI:
-    T1D_chiou_2021:
-    #European_T2D:
-    RA_okada:
-    trans_ancestry_T2D:
-    #IBD_DeLange2017:
-    #UC_DeLange2017:
-    #EA3_Lee2018:
-    #Height_Yengo2018:
-    #CD_DeLange2017:
-    #Testosterone:
-    #Total_protein:
-    #autism_matoba_matoba:
-    #body_BMI_yengo:
-    #breast_cancer_zhang:
-
 cores:
     64
 # software
