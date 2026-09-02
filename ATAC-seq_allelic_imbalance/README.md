@@ -1,6 +1,6 @@
 
 # Description
-This is the core pipeline to perform an allelic imbalance analsis of ATAC-seq reads at heterozygous SNP sites in one more subjects.  
+This is the core pipeline to perform an allelic imbalance analsis of ATAC-seq reads at heterozygous SNP sites in one or more subjects.  
 
 A sample set of data is included in the data/example_data. Note that this data differs different from actual data used in the manuscrtip. Two types of files are needed in minimum to run this pipeline. They are described in the next section.
 
